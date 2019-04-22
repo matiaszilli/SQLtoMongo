@@ -20,35 +20,35 @@ function perTable(tableName, sql, mongo) {
         let collection = db.collection('posiciones')
     
         var request = new MsSqlClient.Request()
-        let start = process.hrtime(); // start timer
+        let start_select = process.hrtime(); // start timer
         // Querying MSSQL
         request.query("SELECT * FROM " + tableName, (err, rows) => {
             if (err) console.log(err);
             let nrows = rows.recordsets[0].length; // get nrows of table
-            time = process.hrtime(start); // end timer
-            time_s = ((time[0] * NS_PER_SEC + time[1])  * MS_PER_NS).toFixed(2);
-            console.log("  Querying table " + tableName + ' finished in ' + time_s + ' rows: ' + nrows + " ps (rows/s): " +  (nrows/time_s).toFixed());
+            time_select = process.hrtime(start_select); // end timer
+            time_select_s = ((time_select[0] * NS_PER_SEC + time_select[1])  * MS_PER_NS).toFixed(2);
+            console.log("  Querying table " + tableName + ' finished in ' + time_select_s + ' rows: ' + nrows + " ps (rows/s): " +  (nrows/time_select_s).toFixed());
             let record_rows = rows.recordsets[0]; // mssql rows
-            // Filter null attributes
-            if(config.delete_nulls) {
-                for (let i = 0 ; i < record_rows.length ; i++) {
-                    let row = record_rows[i];
-                    for (var propName in row) { 
-                        if (row[propName] === null) {
-                          delete row[propName];
+            
+            for (let i = 0 ; i < record_rows.length ; i++) { //foreach row
+                let row = record_rows[i];
+                // Insert Vehicle number attribute
+                row['Vehiculo_id'] = tableName.slice(11);
+                // Filter null attributes
+                if(config.delete_nulls) {
+                    for (var propName in row) { //foreach attribute
+                        if (row[propName] === null) { // if the property is null the delete
+                            delete row[propName];
                         }
                     }
                 }
-                record_rows.forEach( row => {
-                    Object.keys(row).forEach((key) => (row[key] == null) && delete row[key]);
-                });
             }
-            let start2 = process.hrtime(); // start timer
+            let start_insert = process.hrtime(); // start timer
             // Inserting data into Mongodb
             collection.insertMany(record_rows, (err, res) => {
-                time2 = process.hrtime(start2); // end timer
-                time_s = ((time2[0] * NS_PER_SEC + time2[1])  * MS_PER_NS).toFixed(2);
-                console.log("  Inserting table " + tableName + ' finished in ' + time_s);
+                time_insert = process.hrtime(start_insert); // end timer
+                time_insert_s = ((time_insert[0] * NS_PER_SEC + time_insert[1])  * MS_PER_NS).toFixed(2);
+                console.log("  Inserting table " + tableName + ' finished in ' + time_insert_s);
                 resolve(true);
             });
         })
