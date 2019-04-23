@@ -5,7 +5,7 @@ var MongoClient = require('mongodb').MongoClient;
 var config = {};
 // Params
 config.sqlDatabase = 'Cybermapa_historico'; // Origin SQL database
-config.mongoDatabase = 'gestya2'; // Destination Mongo collection
+config.mongoDatabase = 'gestya3'; // Destination Mongo collection
 config.delete_nulls = true; // Do not insert null values into Mongo
 
 config.mongodb = `mongodb://localhost:27017/${config.mongoDatabase}`;
@@ -22,26 +22,18 @@ function perTable(tableName, sql, mongo) {
         var request = new MsSqlClient.Request()
         let start_select = process.hrtime(); // start timer
         // Querying MSSQL
-        request.query("SELECT * FROM " + tableName, (err, rows) => {
+        request.query("SELECT * FROM " + tableName, async (err, rows) => {
             if (err) console.log(err);
             let nrows = rows.recordsets[0].length; // get nrows of table
             time_select = process.hrtime(start_select); // end timer
             time_select_s = ((time_select[0] * NS_PER_SEC + time_select[1])  * MS_PER_NS).toFixed(2);
             console.log("  Querying table " + tableName + ' finished in ' + time_select_s + ' rows: ' + nrows + " ps (rows/s): " +  (nrows/time_select_s).toFixed());
             let record_rows = rows.recordsets[0]; // mssql rows
-            
-            for (let i = 0 ; i < record_rows.length ; i++) { //foreach row
+            // Loop for rows in a given table
+            for (let i = 0 ; i < record_rows.length ; i++) {
                 let row = record_rows[i];
-                // Insert Vehicle number attribute
-                row['Vehiculo_id'] = tableName.slice(11);
-                // Filter null attributes
-                if(config.delete_nulls) {
-                    for (var propName in row) { //foreach attribute
-                        if (row[propName] === null) { // if the property is null the delete
-                            delete row[propName];
-                        }
-                    }
-                }
+                // Parse Data
+                await parseData(tableName, row);
             }
             let start_insert = process.hrtime(); // start timer
             // Inserting data into Mongodb
@@ -53,6 +45,56 @@ function perTable(tableName, sql, mongo) {
             });
         })
     })
+}
+
+async function parseData(tableName, row) {
+    // if(!row.Posi_longitud) {
+    //     console.log(row);
+    //     return
+    // }
+    // Insert Vehicle number attribute
+    row['vehiculo_id'] = parseInt(tableName.slice(11));
+    // Parse coordinates to GEOjson
+    row["location"] = {
+        type: "Point",
+        coordinates: [row.Posi_longitud, row.Posi_latitud] //the longitude first and then latitude
+    }
+    delete row.Posi_longitud; // delete old values
+    delete row.Posi_latitud;
+    // Parse satelites
+    row["satelites"] = {
+        posi_satelites_usados: row.posi_satelites_usados,
+        posi_satelites_vistos: row.posi_satelites_vistos,
+        posi_satelites_supuestos: row.posi_satelites_supuestos,
+    }
+    delete row.posi_satelites_usados; // delete old values
+    delete row.posi_satelites_vistos;
+    delete row.posi_satelites_supuestos;
+    // Parse sensores
+    row["sensores"] = {
+        posi_sensor1: row.posi_sensor1,
+        posi_sensor2: row.posi_sensor2,
+        posi_sensor3: row.posi_sensor3,
+    }
+    delete row.posi_sensor1; // delete old values
+    delete row.posi_sensor2;
+    delete row.posi_sensor3;
+    // Filter null attributes
+    if(config.delete_nulls) {
+        for (var propName in row) { //foreach attribute
+            if (row[propName] === null) { // if the property is null then delete
+                delete row[propName];
+            }
+        }
+    }
+    // Parse extras
+    row["extras"] = {};
+    for (var propName in row) { //foreach attribute
+        if (propName.search(/Posi_Extra_/i) !== -1) { 
+            row.extras[propName] = row[propName];
+            delete row[propName];
+        }
+    }
 }
 
 async function getTables(sql) {
