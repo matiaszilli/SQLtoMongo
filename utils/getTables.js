@@ -9,7 +9,7 @@
 
 module.exports = async function getTables(MsSqlConnection, database) {
     try {
-        const result = await MsSqlConnection.query(`SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='${database}'`);
+        let result = await MsSqlConnection.query(`SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='${database}'`);
         result = result.filter((el) => { // filter results
             return el.indexOf("Posiciones_") === 0; // just elements which begins with "Posiciones_"
         });
