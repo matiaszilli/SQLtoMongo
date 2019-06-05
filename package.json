@@ -4,6 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "start": "NODE_ENV=production node --max_old_space_size=8192 app.js",
+    "startd": "NODE_ENV=production nohup node --max_old_space_size=8192 app.js &",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
