@@ -9,13 +9,13 @@
 
 module.exports = async function getTables(MsSqlConnection, database) {
     try {
-        let result = await MsSqlConnection.query(`SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='${database}'`);
-        result = result.filter((el) => { // filter results
-            return el.indexOf("Posiciones_") === 0; // just elements which begins with "Posiciones_"
-        });
+        const result = await MsSqlConnection.query(`SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='${database}'`);
         let tables = [];
+        let tableName;
         for (var i = 0; i < result.recordset.length; i++) {
-            tables.push(result.recordset[i].TABLE_NAME);
+            tableName = result.recordset[i].TABLE_NAME;
+            if(tableName.indexOf("Posiciones_") === 0) // just elements which begins with "Posiciones_"
+                tables.push(tableName);
         }
         return tables;
     } catch (err) {
